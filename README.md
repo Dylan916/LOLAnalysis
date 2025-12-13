@@ -21,7 +21,7 @@ The original dataset contains a total of 118932 rows and 164 columns. Despite th
 - `side`: Indicates which side of the map the team played on ("Blue" or "Red").
 - `result`: The binary variable indicating the outcome of a match (1 indicates a Win, and 0 indicates a Loss).
 - `gamelength`: The total duration of the match in seconds.
-- `golddiffat15`: The difference in total gold between the player/team and their opponent at the 15-minute mark.
+- `golddiffat15`: The difference in total gold between the player/team and their opponent at 15 minutes.
 - `xpdiffat15`: The difference in total experience points (XP) between the player/team and their opponent at 15 minutes.
 - `csdiffat15`: The difference in "Creep Score" (minions killed) at 15 minutes between the player/team.
 - `killsat15`: The total number of enemy champions killed by the player/team in the first 15 minutes.
@@ -46,4 +46,55 @@ Our first step is make sure the data is cleaned so we can properly analyze it. T
 * This dataframe may be adjusted (add a new column temporarily) when dealing with hypothesis testing or creating a model
 
 ### Univariate Analysis
+
+I conducted some univariate analysis to examine the distribution of single variables. One the variable I analyzed was the distribution of kills at 15 minutes as shown below. We can notice that the shape of the histogram is skewed right, meaning the majority of games have low number of kills at 15 minutes, but there are a few games that have significantly higher, extreme kill counts.
+
+<iframe
+  src="assets/killsat15_hist.html"
+  width="800"
+  height="600"
+  frameborder="0"
+></iframe>
+
+### Bivariate Analysis
+
+I also conducted some bivariate analysis to examine the relationship between two variables. One relationship I analyzed was between the gold difference at 15 minutes and the match result. We can see from the box plots, that on average, when a team wins, they tend to have a higher gold difference at 15 minutes than when they lose.
+
+<iframe
+  src="assets/golddiff_boxes.html"
+  width="800"
+  height="600"
+  frameborder="0"
+></iframe>
+
+### Interesting Aggregates
+
+I was also able to find some interesting aggregates within the data.
+
+One interesting aggregate I found involved first groupby by the match result then finding the mean for some numerical columns. 
+As shown below, the columns which dealt with a difference at 15 minutes were symmetrical in their differences, for example take `golddiffat15`, when a team won they had an average gold difference of positive 1346.97 while when a team lost they had an average gold difference of exactly the opposite, -1346.97. This makes sense as a difference means as a team goes up 100, another team goes exactly down for the same. However, we can notice that whenever a team won, they had a postive difference in that statistic.  
+
+'|   result |   golddiffat15 |   xpdiffat15 |   csdiffat15 |   killsat15 |   deathsat15 |\n|---------:|---------------:|-------------:|-------------:|------------:|-------------:|\n|        0 |       -1346.97 |     -953.119 |     -17.0443 |     3.65241 |      5.28458 |\n|        1 |        1346.97 |      953.119 |      17.0443 |     5.26688 |      3.67385 |'
+
+---
+
+## Assessment of Missingness
+
+### NMAR Analysis
+
+When looking through the original dataset, I was able to identify `ban1`, `ban2`, `ban3`, `ban4`, `ban5` as NMAR. Sometimes one of the ban columns would be NaN but the rest of the ban columns would correctly have data in the same row, so we can tell it is not randomly missing. When playing League of Legends, players have choose not to ban anyone and in this case that would would result in a NaN. One way to turn the ban columns into MAR, is for every player row have a column that we can call `used_ban`, which would be a boolean determining if they used their ban.
+
+### Missingness Dependency
+
+To test missingness dependency, I will test the missingness of `golddiffat15` column when it depends on the `league` column and the `result` column.
+
+First, I ran a permutation test to test the missingness of `golddiffat15` on `league`.
+
+Null Hypothesis: The distribution of the 'league' column is the same when `golddiffat15` is missing and when `golddiffat15` is not missing.
+
+Alternative Hypothesis: The distribution of the 'league' column is not the same when `golddiffat15` is missing and when `golddiffat15` is not missing
+
+Test Statistic: Total variation distance (TVD)
+
+
 
