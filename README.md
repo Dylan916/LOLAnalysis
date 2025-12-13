@@ -74,7 +74,10 @@ I was also able to find some interesting aggregates within the data.
 One interesting aggregate I found involved first groupby by the match result then finding the mean for some numerical columns. 
 As shown below, the columns which dealt with a difference at 15 minutes were symmetrical in their differences, for example take `golddiffat15`, when a team won they had an average gold difference of positive 1346.97 while when a team lost they had an average gold difference of exactly the opposite, -1346.97. This makes sense as a difference means as a team goes up 100, another team goes exactly down for the same. However, we can notice that whenever a team won, they had a postive difference in that statistic.  
 
-'|   result |   golddiffat15 |   xpdiffat15 |   csdiffat15 |   killsat15 |   deathsat15 |\n|---------:|---------------:|-------------:|-------------:|------------:|-------------:|\n|        0 |       -1346.97 |     -953.119 |     -17.0443 |     3.65241 |      5.28458 |\n|        1 |        1346.97 |      953.119 |      17.0443 |     5.26688 |      3.67385 |'
+|   result |   golddiffat15 |   xpdiffat15 |   csdiffat15 |   killsat15 |   deathsat15 |
+|---------:|---------------:|-------------:|-------------:|------------:|-------------:|
+|        0 |       -1346.97 |     -953.119 |     -17.0443 |     3.65241 |      5.28458 |
+|        1 |        1346.97 |      953.119 |      17.0443 |     5.26688 |      3.67385 |
 
 ---
 
@@ -90,11 +93,82 @@ To test missingness dependency, I will test the missingness of `golddiffat15` co
 
 First, I ran a permutation test to test the missingness of `golddiffat15` on `league`.
 
-Null Hypothesis: The distribution of the 'league' column is the same when `golddiffat15` is missing and when `golddiffat15` is not missing.
+Null Hypothesis: The distribution of the `league` column is the same when `golddiffat15` is missing and when `golddiffat15` is not missing.
 
-Alternative Hypothesis: The distribution of the 'league' column is not the same when `golddiffat15` is missing and when `golddiffat15` is not missing
+Alternative Hypothesis: The distribution of the `league` column is not the same when `golddiffat15` is missing and when `golddiffat15` is not missing
 
 Test Statistic: Total variation distance (TVD)
 
+Below is the empirical distribution of the TVD's. I found an observed TVD of 0.991, which gave me a p-value of 0.00, which is less than a significance level of 0.5, meaning I reject the null hypothesis. This indicates that missingness of `golddiffat15` (MAR) depends on `league`.
 
+<iframe
+  src="assets/league_miss_tvd.html"
+  width="800"
+  height="600"
+  frameborder="0"
+></iframe>
+
+Next, I ran a permutation test to test the missingness of `golddiffat15` on `result`.
+
+Null Hypothesis: The distribution of the `result` column is the same when `golddiffat15` is missing and when `golddiffat15` is not missing.
+
+Alternative Hypothesis: The distribution of the `result` column is not the same when `golddiffat15` is missing and when `golddiffat15` is not missing
+
+Test Statistic: Abosulute Mean Difference (absolute difference between the average win rate when `golddiffat15` is missing and when it is not missing)
+
+Below is the empirical distribution of the absolute mean differences. I found an observed absolute mean difference of 0, which gave me a p-value of 1.00, which is greater than a significance level of 0.5, meaning I fail reject the null hypothesis. This indicates that missingness of `golddiffat15` does not depend on `league`.
+
+<iframe
+  src="assets/league_miss_tvd.html"
+  width="800"
+  height="600"
+  frameborder="0"
+></iframe>
+
+---
+
+## Hypothesis Testing
+
+I will be running a hypothesis test to test if there is significant difference between the distribution of results when teams do and do not have a gold lead at 15 minutes . Before running the test, I added a column `hasgoldleadat15` which contains a boolean value depending if a team has a gold difference of greater than 0 at 15 minutes (True if they do, False otherwise). 
+
+Null Hypothesis: The distribution of a team's result (whether they win/lose) is the same for teams that have or don't have a gold lead at 15 minutes.
+
+Alternative Hypothesis: The distribution of a team's result (whether they win/lose) is not the same for teams that have or don't have a gold lead at 15 minutes.
+
+Test Statistic: Difference of mean result (win rate) between teams with a gold lead at 15 minutes and teams that do not have a gold lead at 15 minutes.
+
+Significance Level: 5%
+
+I recieved an observed difference of mean of 0.424, which gave me a p-value of 0.00, which allows me to reject the null hypothesis. This gives as reason to believe that the distrubition of a team's result result (whether they win/lose) is not the same for teams that have or don't have a gold lead at 15 minutes. This relates back to the central question, suggesting that possibly early game statistics, specifically gold, may play some role in determing the result.
+
+---
+
+## Framing a Prediction Problem
+
+From the Hypothesis Test, we have evidence to believe that having a gold lead at 15 minutes has some sort of influence on the result of the game. Now, it brings up the question, if we would actually be able to predict the result of game, using early game statisics such as `golddiffat15` and others. To address this prediction problem, we must acknowledge that this a classification problem, specifically a binary classification, since it is either 0 for a lost and 1 for a win. Because data is repeated twice for matches for difference statistics like `golddiffat15` (if you have +100 diff, then there would a team with -100) we will only consider Blue side teams, as both sides are effectively the same. The metric we will use is accuracy, since the classes are well balanced, since there is approximately 50% teams winning and 50% teams winning losing, if we consider Blue side only. At the time of the test, I will only have access to only 75% of the data since I will be splitting the data into 75% training and 25% test. In addition, at the time of test I will consider all features except `gametime`, because every statistic is something we would be gathered in game, while gametime is after the game is done.
+
+---
+
+### Baseline Model
+
+For my baseline model, I will use a Random Forest Classifier with 3 features. I will start with the three difference at 15 minutes statistics: `golddiffat15`, `xpdiffat15`, `csdiffat15`. These features are all numerical and do not require transformations, however I still applied StandardScaler transformation in case I ever switch models. I also had to impute some values for each of the numerical features, using each of their medians as the Random Forest Classifier cannot handle missing values. Aftering fitting, the accurracy of the model is a suprising 96.2% on training data and 68.9% on the test data. This is case of extreme overfitting that my future model must handel.
+
+---
+
+### Final Model
+
+For my final model I added two new features. I one hot encoded the `league` column as certain leagues may better take advantage or fall short when they are ahead. I also added `killdiffat15` column, which is the result subtracting the `deathsat15` from `killsat15`. I decided to stick with a Random Forest Classifier as they function better than Decision Trees, however, I used GridSearchCV to find the best hyperparameters for the Random Forest Classifier which the hyperparameters I included were max depth and the needed minimumn number of samples in order to split. From a result of all of this, the model scored 76.3% accuracy on the training data and 71.1% accuracy on the test data, meaning around 2.2% improvement.
+
+---
+
+### Fairness Analysis
+
+I also analyzed the fairness of my model, specifically if it performs better or worse for teams that have a gold lead at 15 minutes compared to teams that do not have a gold lead at 15 minutes. 
+
+Group X: Teams that have a gold lead at 15 minutes
+Group Y: Teams that do not have a gold lead at 15 minutes
+Null Hypothesis: Our model is fair. Its accuracy for teams who have gold lead at 15 minutes is same as the accuracy for players who do not have gold lead at 15 minutes.
+Alternative hypothesis: Our model is unfair. Its accuracy for teams who have gold lead at 15 minutes is not the same as the accuracy for players who do not have gold lead at 15 minutes.
+Test statistics: Absolute Difference in accuracy between teams who have gold lead at 15 minutes and teams who do not have a gold lead.
+I got a observed absolute accuracy difference of 0.0153 resulting in a p-value of 0.4148, failing to reject the null hypothesis, meaning our model appears to be fair.
 
